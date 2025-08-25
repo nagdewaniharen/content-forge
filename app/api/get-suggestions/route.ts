@@ -9,9 +9,11 @@ async function mockGeminiSuggestions(description: string, primaryKeyword: string
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   const headlines = [
-    `The Ultimate Guide to ${primaryKeyword}: Strategies That Actually Work`,
-    `Why Most ${primaryKeyword} Approaches Fail (And What to Do Instead)`,
-    `5 Surprising Secrets About ${primaryKeyword} That Experts Don't Want You to Know`
+    `${primaryKeyword}: The Ultimate Guide to Getting the Best Deal`,
+    `${primaryKeyword}: Avoid These 5 Costly Mistakes Before You Buy`,
+    `${primaryKeyword}: Is It Right for Your Budget? Complete Analysis`,
+    `${primaryKeyword}: Expert Tips for Finding Hidden Gems`,
+    `${primaryKeyword}: Secrets to Negotiating the Perfect Price`
   ];
 
   const keywordSuggestions = [
@@ -48,12 +50,23 @@ async function getGeminiSuggestions(description: string, primaryKeyword: string,
       Related keywords: ${relevantKeywords.join(', ')}
 
       Search the web for current trends and insights, then provide:
-      1. Three compelling article headlines (benefit-focused, problem-solving, curiosity-driven)
+      1. Five compelling article headlines - CRITICAL: ALL headlines MUST start with the exact primary keyword "${primaryKeyword}"
+         - One benefit-focused headline
+         - One problem-solving headline  
+         - One curiosity-driven headline
+         - One comparison/guide headline
+         - One expert tips/secrets headline
       2. 10-15 SEO keyword suggestions related to the topic
+
+      HEADLINE REQUIREMENTS:
+      - Every headline MUST begin with exactly: "${primaryKeyword}"
+      - Follow with a colon (:) then the rest of the headline
+      - Make them compelling and click-worthy
+      - Ensure variety in approach and angle
 
       Respond with ONLY this JSON structure (no markdown, no explanations, just pure JSON):
       {
-        "headlines": ["headline1", "headline2", "headline3"],
+        "headlines": ["${primaryKeyword}: headline1", "${primaryKeyword}: headline2", "${primaryKeyword}: headline3", "${primaryKeyword}: headline4", "${primaryKeyword}: headline5"],
         "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8", "keyword9", "keyword10"]
       }
     `;
@@ -122,21 +135,23 @@ async function getGeminiSuggestions(description: string, primaryKeyword: string,
             // Create a basic structure if we can extract some info
             parsed = {
               headlines: [
-                "Essential Things to Know Before Buying a Second Hand EECO Van",
-                "Smart Buyer's Guide: Second Hand EECO Van Purchase Tips", 
-                "Why Second Hand EECO Vans Are Perfect for Budget Buyers"
+                `${primaryKeyword}: Essential Things to Know Before You Buy`,
+                `${primaryKeyword}: Smart Buyer's Guide and Expert Tips`, 
+                `${primaryKeyword}: Why It's Perfect for Budget-Conscious Buyers`,
+                `${primaryKeyword}: Complete Analysis and Comparison Guide`,
+                `${primaryKeyword}: Hidden Secrets Every Buyer Should Know`
               ],
               keywords: [
-                "second hand EECO van price",
-                "used EECO van dealers",
-                "buy used EECO van",
-                "EECO van for sale",
-                "second hand commercial vehicle",
-                "EECO van inspection tips",
-                "used van buying guide",
-                "EECO van maintenance",
-                "affordable commercial vehicles",
-                "pre-owned EECO van"
+                `${primaryKeyword} price`,
+                `${primaryKeyword} dealers`,
+                `buy ${primaryKeyword}`,
+                `${primaryKeyword} for sale`,
+                `${primaryKeyword} buying guide`,
+                `${primaryKeyword} inspection tips`,
+                `${primaryKeyword} reviews`,
+                `${primaryKeyword} maintenance`,
+                `${primaryKeyword} benefits`,
+                `${primaryKeyword} comparison`
               ]
             };
           }
