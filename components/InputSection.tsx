@@ -10,7 +10,6 @@ interface InputSectionProps {
   onGetSuggestions: () => void;
   onClearInput: () => void;
   onImageUpload: (file: File) => void;
-  onImageUpload: (file: File) => void;
 }
 
 export default function InputSection({ state, updateState, onGetSuggestions, onClearInput, onImageUpload }: InputSectionProps) {
