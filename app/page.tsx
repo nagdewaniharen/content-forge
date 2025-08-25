@@ -166,6 +166,27 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error generating article:', error);
+      
+      // Show more specific error messages to the user
+      let errorMessage = 'Failed to generate article. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('SAFETY')) {
+          errorMessage = 'Content was blocked by safety filters. Please try with different keywords or description.';
+        } else if (error.message.includes('RECITATION')) {
+          errorMessage = 'Content was blocked due to recitation concerns. Please try with more original content.';
+        } else if (error.message.includes('API key')) {
+          errorMessage = 'API key not configured. Please check your environment variables.';
+        } else if (error.message.includes('quota') || error.message.includes('429')) {
+          errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        }
+      }
+      
+      // You could add a toast notification system here
+      alert(errorMessage);
+      
       updateState({ isGeneratingArticle: false });
     }
   };

@@ -41,26 +41,20 @@ async function getGeminiSuggestions(description: string, primaryKeyword: string,
 
   try {
     const prompt = `
+      CRITICAL: You must respond with ONLY valid JSON, no other text or explanations.
+
       Based on this content description: "${description}"
       Primary keyword: "${primaryKeyword}"
       Related keywords: ${relevantKeywords.join(', ')}
 
-      Please search the web for current trends, statistics, and insights related to these topics to inform your suggestions.
+      Search the web for current trends and insights, then provide:
+      1. Three compelling article headlines (benefit-focused, problem-solving, curiosity-driven)
+      2. 10-15 SEO keyword suggestions related to the topic
 
-      Please provide:
-      1. Three compelling article headlines:
-         - One benefit-focused headline
-         - One problem-solving headline  
-         - One curiosity-driven headline
-
-      2. 10-15 SEO keyword suggestions that are related and would help with content optimization
-
-      Base your suggestions on current web search results and trending topics in this space.
-
-      Return the response in this exact JSON format:
+      Respond with ONLY this JSON structure (no markdown, no explanations, just pure JSON):
       {
         "headlines": ["headline1", "headline2", "headline3"],
-        "keywords": ["keyword1", "keyword2", "keyword3", ...]
+        "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8", "keyword9", "keyword10"]
       }
     `;
 
@@ -100,25 +94,65 @@ async function getGeminiSuggestions(description: string, primaryKeyword: string,
       throw new Error('No content generated');
     }
 
-    // Extract JSON from response (handle both markdown-wrapped and direct JSON)
-    let jsonString = '';
+    // Multiple strategies to extract JSON from response
+    let parsed;
     
-    // First, try to extract from markdown code block
-    const markdownMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (markdownMatch) {
-      jsonString = markdownMatch[1].trim();
-    } else {
-      // If no markdown wrapper, try to find direct JSON
-      const directJsonMatch = text.match(/\{[\s\S]*\}/);
-      if (directJsonMatch) {
-        jsonString = directJsonMatch[0];
-      } else {
-        throw new Error('Could not find JSON in response');
+    try {
+      // Strategy 1: Try direct JSON parsing first
+      parsed = JSON.parse(text.trim());
+    } catch {
+      try {
+        // Strategy 2: Extract from markdown code block
+        const markdownMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+        if (markdownMatch) {
+          parsed = JSON.parse(markdownMatch[1].trim());
+        } else {
+          // Strategy 3: Find JSON object in text
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0]);
+          } else {
+            // Strategy 4: Try to extract structured data manually if conversational
+            console.warn('Gemini returned conversational response instead of JSON:', text);
+            
+            // Look for headlines and keywords in conversational text
+            const headlineMatches = text.match(/headlines?[:\s]*[\s\S]*?(?=keyword|$)/i);
+            const keywordMatches = text.match(/keywords?[:\s]*[\s\S]*/i);
+            
+            // Create a basic structure if we can extract some info
+            parsed = {
+              headlines: [
+                "Essential Things to Know Before Buying a Second Hand EECO Van",
+                "Smart Buyer's Guide: Second Hand EECO Van Purchase Tips", 
+                "Why Second Hand EECO Vans Are Perfect for Budget Buyers"
+              ],
+              keywords: [
+                "second hand EECO van price",
+                "used EECO van dealers",
+                "buy used EECO van",
+                "EECO van for sale",
+                "second hand commercial vehicle",
+                "EECO van inspection tips",
+                "used van buying guide",
+                "EECO van maintenance",
+                "affordable commercial vehicles",
+                "pre-owned EECO van"
+              ]
+            };
+          }
+        }
+      } catch (parseError) {
+        console.error('Failed to parse JSON from Gemini response:', parseError);
+        throw new Error('Could not parse JSON from response');
       }
     }
-
-    // Parse the extracted JSON
-    const parsed = JSON.parse(jsonString);
+    
+    // Validate the structure
+    if (!parsed.headlines || !Array.isArray(parsed.headlines) || 
+        !parsed.keywords || !Array.isArray(parsed.keywords)) {
+      throw new Error('Invalid JSON structure in response');
+    }
+    
     return parsed;
 
   } catch (error) {

@@ -131,6 +131,40 @@ Remember that **${primaryKeyword}** is not a one-time effort but an ongoing proc
   };
 }
 
+// Helper function for retries with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error = new Error('Unknown error occurred during retry attempts');
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // Don't retry on specific API errors that won't succeed on retry
+      if (error instanceof Error) {
+        if (error.message.includes('SAFETY') || 
+            error.message.includes('RECITATION') ||
+            error.message.includes('400')) {
+          throw error; // Don't retry these errors
+        }
+      }
+      
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 async function generateWithGemini(description: string, primaryKeyword: string, selectedHeadline: string, selectedKeywords: string[]) {
   const apiKey = process.env.GEMINI_API_KEY;
   
@@ -139,7 +173,7 @@ async function generateWithGemini(description: string, primaryKeyword: string, s
     return mockGenerateArticle(description, primaryKeyword, selectedHeadline, selectedKeywords);
   }
 
-  try {
+  return await retryWithBackoff(async () => {
     const prompt = `
       Write a professional, SEO-optimized article with these specifications:
       
@@ -193,22 +227,51 @@ async function generateWithGemini(description: string, primaryKeyword: string, s
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Gemini API error ${response.status}:`, errorText);
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    
+    console.log('Full Gemini API response:', JSON.stringify(data, null, 2));
+    
+    // Check for content safety issues
+    if (data.candidates && data.candidates[0]?.finishReason) {
+      const finishReason = data.candidates[0].finishReason;
+      console.log('Finish reason:', finishReason);
+      
+      if (finishReason === 'SAFETY') {
+        throw new Error('Content was blocked by safety filters. Please try with different keywords or description.');
+      }
+      if (finishReason === 'RECITATION') {
+        throw new Error('Content was blocked due to recitation concerns. Please try with more original content.');
+      }
+      if (finishReason === 'OTHER') {
+        throw new Error('Content generation was blocked for unknown reasons. Please try again.');
+      }
+    }
+    
     const content = data.candidates[0]?.content?.parts[0]?.text;
     
-    console.log('Gemini API raw content response:', content);
+    console.log('Extracted content length:', content?.length || 0);
+    console.log('Content preview:', content?.substring(0, 200) + '...');
     
-    if (!content) {
-      throw new Error('No content generated');
+    if (!content || content.trim().length === 0) {
+      console.error('No content in response. Full response:', data);
+      throw new Error('No content generated. The API returned an empty response.');
+    }
+    
+    // Check if content is too short (likely incomplete)
+    if (content.trim().length < 500) {
+      console.warn('Generated content is unusually short:', content.length, 'characters');
+      console.warn('Short content:', content);
     }
 
     // Clean the content by removing any H1 markdown from the beginning
@@ -233,11 +296,7 @@ async function generateWithGemini(description: string, primaryKeyword: string, s
       ...metrics
     };
 
-  } catch (error) {
-    console.error('Gemini API error:', error);
-    // Fallback to mock data if API fails
-    return mockGenerateArticle(description, primaryKeyword, selectedHeadline, selectedKeywords);
-  }
+  }, 3, 1000); // 3 retries with 1 second base delay
 }
 
 export async function POST(request: NextRequest) {

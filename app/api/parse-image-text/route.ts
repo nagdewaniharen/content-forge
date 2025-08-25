@@ -56,7 +56,7 @@ async function parseImageTextWithGemini(base64Image: string, mimeType: string) {
           temperature: 0.3,
           topK: 32,
           topP: 0.95,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
         }
       })
     });
