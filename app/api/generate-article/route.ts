@@ -62,7 +62,7 @@ async function mockGenerateArticle(description: string, primaryKeyword: string, 
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 3000));
 
-  const content = `In today's competitive digital landscape, **${primaryKeyword}** has become more crucial than ever for businesses looking to establish their online presence and drive meaningful results. Whether you're a startup founder, marketing professional, or business owner, understanding the intricacies of **${selectedKeywords[0]}** can make the difference between success and mediocrity.
+  const content = `In today's competitive digital landscape, ${primaryKeyword} has become more crucial than ever for businesses looking to establish their online presence and drive meaningful results. Whether you're a startup founder, marketing professional, or business owner, understanding the intricacies of ${selectedKeywords[0]} can make the difference between success and mediocrity.
 
 The world of **${primaryKeyword}** is constantly evolving, with new strategies and techniques emerging regularly. Recent studies show that companies implementing comprehensive **${selectedKeywords[1]}** strategies see an average increase of 40% in their overall performance metrics. This statistic alone highlights the importance of staying current with industry best practices.
 
@@ -192,7 +192,7 @@ async function generateWithGemini(description: string, primaryKeyword: string, s
       SEO SPECIFICATIONS:
       - Include 3-4 H2 sections (## format)
       - Keyword density: 0.5-0.8% maximum
-      - Bold the primary keyword and 4-5 other important keywords using **text**
+      - Bold the primary keyword and 4-5 other important keywords using text
       - Natural, conversational tone
       - Grade 8 reading level
       - Active voice
