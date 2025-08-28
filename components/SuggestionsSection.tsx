@@ -12,10 +12,14 @@ interface SuggestionsSectionProps {
 
 export default function SuggestionsSection({ state, updateState, onGenerateArticle }: SuggestionsSectionProps) {
   const [showHeadlineDropdown, setShowHeadlineDropdown] = useState(false);
+  const [isRefiningHeadline, setIsRefiningHeadline] = useState(false);
+  const [refinedAlternatives, setRefinedAlternatives] = useState<string[]>([]);
+  const [refineKeyword, setRefineKeyword] = useState('');
 
   const handleHeadlineSelect = (headline: string) => {
     updateState({ selectedHeadline: headline });
     setShowHeadlineDropdown(false);
+    // Keep refinedAlternatives when selecting a refined option
   };
 
   const handleKeywordToggle = (keyword: string) => {
@@ -35,6 +39,51 @@ export default function SuggestionsSection({ state, updateState, onGenerateArtic
                      state.selectedKeywords.length >= 5 && 
                      state.selectedKeywords.length <= 10 &&
                      !state.isGeneratingArticle;
+
+  const refineHeadline = async () => {
+    if (!state.selectedHeadline) return;
+    try {
+      setIsRefiningHeadline(true);
+      const hasCustomKeyword = Boolean(refineKeyword && refineKeyword.trim().length > 0);
+      const instructions = hasCustomKeyword
+        ? `Minimally edit the current headline to naturally include the phrase "${refineKeyword.trim()}" (or a grammatically correct close variant). Preserve the original meaning, tone, and most of the wording. Keep punctuation and structure similar. Max 60 characters. Provide options that are SMALL variations of the original; the first option should be the closest minimal change.`
+        : 'Make it concise, professional, avoid clickbait, include the primary keyword naturally.';
+      const response = await fetch('/api/refine-headline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentHeadline: state.selectedHeadline,
+          instructions,
+          primaryKeyword: (refineKeyword || state.primaryKeyword),
+          mode: 'minimal',
+          tone: 'helpful, authoritative',
+          maxLength: 60,
+          generateAlternatives: 6
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        const alts: string[] = Array.isArray(data.alternatives) ? data.alternatives : [];
+        // Ensure refined option is first
+        const list = Array.from(new Set([
+          ...(data.refinedHeadline ? [data.refinedHeadline] : []),
+          ...alts
+        ]));
+        setRefinedAlternatives(list);
+        // Only update the selected headline, not all headlines
+        if (list.length > 0) {
+          updateState({ selectedHeadline: list[0] });
+        }
+        setShowHeadlineDropdown(true);
+      } else {
+        console.error('Headline refinement failed:', data?.error || 'Unknown error');
+      }
+    } catch (e) {
+      console.error('Headline refinement error:', e);
+    } finally {
+      setIsRefiningHeadline(false);
+    }
+  };
 
   if (state.isLoadingSuggestions) {
     return (
@@ -75,23 +124,78 @@ export default function SuggestionsSection({ state, updateState, onGenerateArtic
             >
               {state.selectedHeadline || 'Select a headline...'}
             </button>
+                         <div className="flex items-center justify-between mt-2 gap-3">
+               <input
+                 type="text"
+                 value={refineKeyword}
+                 onChange={(e) => setRefineKeyword(e.target.value)}
+                 placeholder={state.primaryKeyword || 'Enter keyword for refinement'}
+                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+               />
+               <div className="flex gap-2">
+                 {refinedAlternatives.length > 0 && (
+                   <button
+                     onClick={() => setRefinedAlternatives([])}
+                     className="text-sm font-medium px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                   >
+                     Reset
+                   </button>
+                 )}
+                 <button
+                   onClick={refineHeadline}
+                   disabled={!state.selectedHeadline || isRefiningHeadline}
+                   className={`text-sm font-medium px-3 py-1 rounded-lg border transition-colors duration-200 ${
+                     state.selectedHeadline && !isRefiningHeadline
+                       ? 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'
+                       : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                   }`}
+                 >
+                   {isRefiningHeadline ? (
+                     <span className="inline-flex items-center"><Loader2 className="h-4 w-4 animate-spin mr-1" /> Refining...</span>
+                   ) : (
+                     'Refine Headline'
+                   )}
+                 </button>
+               </div>
+             </div>
             
-            {showHeadlineDropdown && (
-              <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg">
-                {state.suggestedHeadlines.map((headline, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleHeadlineSelect(headline)}
-                    className="w-full p-4 text-left hover:bg-gray-50 first:rounded-t-xl last:rounded-b-xl transition-colors duration-200"
-                  >
-                    <div className="font-medium text-gray-900">{headline}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {index === 0 && 'Benefit-focused approach'}
-                      {index === 1 && 'Problem-solving angle'}
-                      {index === 2 && 'Curiosity-driven hook'}
-                    </div>
-                  </button>
-                ))}
+                         {showHeadlineDropdown && (
+               <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg">
+                 {refinedAlternatives.length > 0 ? (
+                   // Show refined headline options first, followed by a separator
+                   <>
+                     {refinedAlternatives.map((headline, index) => (
+                       <button
+                         key={`refined-${index}`}
+                         onClick={() => handleHeadlineSelect(headline)}
+                         className="w-full p-4 text-left hover:bg-gray-50 first:rounded-t-xl transition-colors duration-200"
+                       >
+                         <div className="font-medium text-gray-900">{headline}</div>
+                         <div className="text-sm text-gray-500 mt-1">Refined option</div>
+                       </button>
+                     ))}
+                     <div className="border-t border-gray-200 my-2"></div>
+                   </>
+                 ) : null}
+                 {/* Only show original headlines when no refinement has been done */}
+                 {refinedAlternatives.length === 0 && state.suggestedHeadlines.map((headline, index) => (
+                   <button
+                     key={`original-${index}`}
+                     onClick={() => handleHeadlineSelect(headline)}
+                     className={`w-full p-4 text-left hover:bg-gray-50 ${
+                       index === 0 ? 'rounded-t-xl' : ''
+                     } ${
+                       index === state.suggestedHeadlines.length - 1 ? 'rounded-b-xl' : ''
+                     } transition-colors duration-200`}
+                   >
+                     <div className="font-medium text-gray-900">{headline}</div>
+                     <div className="text-sm text-gray-500 mt-1">
+                       {index === 0 && 'Benefit-focused approach'}
+                       {index === 1 && 'Problem-solving angle'}
+                       {index === 2 && 'Curiosity-driven hook'}
+                     </div>
+                   </button>
+                 ))}
               </div>
             )}
           </div>

@@ -15,6 +15,7 @@ interface InputSectionProps {
 export default function InputSection({ state, updateState, onGetSuggestions, onClearInput, onImageUpload }: InputSectionProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [relevantKeywordsInputString, setRelevantKeywordsInputString] = useState('');
+  
 
   // Initialize the input string from state on mount or when state changes
   useEffect(() => {
@@ -38,6 +39,8 @@ export default function InputSection({ state, updateState, onGetSuggestions, onC
       setErrors({ ...errors, primaryKeyword: '' });
     }
   };
+
+  
 
   const handleRelevantKeywordsChange = (value: string) => {
     setRelevantKeywordsInputString(value);
@@ -199,6 +202,8 @@ export default function InputSection({ state, updateState, onGetSuggestions, onC
           <p className="mt-2 text-sm text-gray-500">
             2-4 words recommended for best results
           </p>
+
+          
         </div>
 
         {/* Relevant Keywords */}
